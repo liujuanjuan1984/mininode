@@ -3,7 +3,7 @@ import logging
 
 from mininode.client import MiniNode
 
-__version__ = "0.1.1"
+__version__ = "0.1.5"
 __author__ = "liujuanjuan1984"
 
 # Set default logging handler to avoid "No handler found" warnings.

@@ -1,6 +1,6 @@
-# quorum-mininode-python
+# QuoRum MiniNode Python SDK
 
-a mini python sdk for quorum lightnode with http/https requests to quorum fullnode
+a mini python sdk for quorum lightnode with http/https requests to group of quorum fullnode.
 
 这是 quorum lightnode（轻节点）的 python sdk 实现之一。
 
