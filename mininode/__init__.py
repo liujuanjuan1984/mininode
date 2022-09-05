@@ -2,7 +2,10 @@ import datetime
 import logging
 
 from mininode.client import MiniNode
+from mininode.crypto.account import check_private_key
+from mininode.utils import decode_seed_url
 
+__all__ = ["MiniNode", "check_private_key", "decode_seed_url"]
 __version__ = "0.1.5"
 __author__ = "liujuanjuan1984"
 
