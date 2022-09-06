@@ -2,13 +2,10 @@ import logging
 import time
 from typing import Dict, List, Optional
 
-import filetype
-
 from mininode import utils
 from mininode.api.base import BaseAPI
 from mininode.crypto.account import check_private_key
 from mininode.crypto.sign_trx import get_content_param, trx_decrypt, trx_encrypt
-from mininode.data import IMAGE_MAX_NUM, IMAGE_MAX_SIZE_KB, ImgContent
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +14,9 @@ class QuorumLightNodeAPI(BaseAPI):
     def send_content(
         self,
         private_key,
-        content: str = None,
-        name: str = None,
-        images: List = None,
+        content: Optional[str] = None,
+        name: Optional[str] = None,
+        images: Optional[List] = None,
         timestamp=None,
     ):
         if not (content or images):
@@ -30,8 +27,7 @@ class QuorumLightNodeAPI(BaseAPI):
         if name:
             obj["name"] = name
         if images:
-            kb = int(IMAGE_MAX_SIZE_KB // min(len(images), IMAGE_MAX_NUM))
-            obj["image"] = [ImgContent(i, kb=kb).__dict__ for i in images[:IMAGE_MAX_NUM]]
+            obj["image"] = utils.pack_images(images)
 
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
@@ -46,7 +42,7 @@ class QuorumLightNodeAPI(BaseAPI):
         if content:
             obj["content"] = content
         if images:
-            obj["image"] = [ImgContent(img).__dict__ for img in images]
+            obj["image"] = utils.pack_images(images)
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
     def del_trx(self, private_key, trx_id, timestamp=None):
@@ -63,7 +59,7 @@ class QuorumLightNodeAPI(BaseAPI):
         if content:
             obj["content"] = content
         if images:
-            obj["image"] = [ImgContent(img).__dict__ for img in images]
+            obj["image"] = utils.pack_images(images)
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
     def like(self, private_key, trx_id, like_type="Like", timestamp=None):
@@ -79,8 +75,7 @@ class QuorumLightNodeAPI(BaseAPI):
         if name:
             person["name"] = name
         if image:
-            file_bytes = utils.zip_image(image, 200)
-            person["image"] = {"content": file_bytes, "mediaType": filetype.guess(file_bytes).mime}
+            person["image"] = utils.pack_profile_image(image)
         return self.send_trx(private_key, person=person, timestamp=timestamp)
 
     def send_trx(self, private_key, obj: Dict = None, person: Dict = None, timestamp=None):
@@ -131,9 +126,9 @@ class QuorumLightNodeAPI(BaseAPI):
             if senders:
                 trxs = [i for i in trxs if i["Publisher"] in senders]
             if trx_types:
-                trxs = [trx for trx in trxs if (utils.trx_type(trx) in trx_types)]
-        except Exception as e:
-            logger.warning(f"get_content error: {e}")
+                trxs = [trx for trx in trxs if (utils.get_trx_type(trx) in trx_types)]
+        except Exception as err:
+            logger.warning(f"get_content error: {err}")
             trxs = encypted_trxs
         return trxs
 
@@ -159,7 +154,7 @@ class QuorumLightNodeAPI(BaseAPI):
                 max_try = 20
             for trx in trxs:
                 start_trx = trx["TrxId"]
-                flag1 = (utils.trx_type(trx) in trx_types) or (not trx_types)
+                flag1 = (utils.get_trx_type(trx) in trx_types) or (not trx_types)
                 flag2 = (trx.get("Publisher", "") in senders) or (not senders)
                 if flag1 and flag2:
                     yield trx
@@ -193,15 +188,15 @@ class QuorumLightNodeAPI(BaseAPI):
         users["progress_tid"] = progress_tid
         return users
 
-    def trx_retweet_params(self, trx, nicknames: Dict = {}):
+    def trx_retweet_params(self, trx: Dict, nicknames: Optional[Dict] = None) -> Dict:
         """trans from trx to an object of new trx to send to chain.
         Returns:
             obj: object of new trx,can be used as: self.send_note(obj=obj).
         """
-
         # 从trx中筛选出引用的 trx_id
         refer_tid = None
-        trxtype = utils.trx_type(trx)
+
+        trxtype = utils.get_trx_type(trx)
         if trxtype == "reply":
             refer_tid = trx["Content"]["inreplyto"]["trxid"]
         elif trxtype in ("like", "dislike"):
@@ -209,5 +204,5 @@ class QuorumLightNodeAPI(BaseAPI):
         refer_trx = None
         if refer_tid:
             refer_trx = self.trx(trx_id=refer_tid)
-        params = utils.trx_retweet_params_init(trx=trx, refer_trx=refer_trx, nicknames=nicknames)
+        params = utils.init_trx_retweet_params(trx=trx, refer_trx=refer_trx, nicknames=nicknames)
         return params

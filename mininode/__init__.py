@@ -2,11 +2,11 @@ import datetime
 import logging
 
 from mininode.client import MiniNode
-from mininode.crypto.account import check_private_key
-from mininode.utils import decode_seed_url
+from mininode.crypto.account import create_private_key
+from mininode.utils import decode_seed_url, timestamp_to_datetime
 
-__all__ = ["MiniNode", "check_private_key", "decode_seed_url"]
-__version__ = "0.1.5"
+__all__ = ["MiniNode", "create_private_key", "decode_seed_url", "timestamp_to_datetime"]
+__version__ = "0.1.6"
 __author__ = "liujuanjuan1984"
 
 # Set default logging handler to avoid "No handler found" warnings.

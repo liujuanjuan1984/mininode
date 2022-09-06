@@ -1,7 +1,7 @@
 """module HttpRequest """
 import logging
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import requests
 
@@ -47,10 +47,11 @@ class HttpRequest:
         self,
         method: str,
         endpoint: str,
-        payload: Dict = {},
+        payload: Optional[Dict] = None,
         api_base=None,
         url=None,
     ):
+        payload = payload or {}
         if not url:
             api_base = api_base or self.api_base
             if not api_base:
@@ -59,15 +60,15 @@ class HttpRequest:
 
         try:
             resp = self._session.request(method=method, url=url, json=payload, headers=self.headers)
-        except Exception as e:  # SSLCertVerificationError
-            logger.warning(f"Exception {e}")
+        except Exception as err:  # SSLCertVerificationError
+            logger.warning(f"Exception {err}")
             _params = dict(method=method, url=url, json=payload, verify=False, headers=self.headers)
             resp = self._session.request(**_params)
 
         try:
             resp_json = resp.json()
-        except Exception as e:
-            logger.warning(f"Exception {e}")
+        except Exception as err:
+            logger.warning(f"Exception {err}")
             resp_json = {}
 
         logger.debug(f"payload:{payload}")
@@ -77,8 +78,8 @@ class HttpRequest:
 
         return resp_json
 
-    def get(self, endpoint: str, payload: Dict = {}):
+    def get(self, endpoint: str, payload: Optional[Dict] = None):
         return self._request("get", endpoint, payload)
 
-    def post(self, endpoint: str, payload: Dict = {}):
+    def post(self, endpoint: str, payload: Optional[Dict] = None):
         return self._request("post", endpoint, payload)
