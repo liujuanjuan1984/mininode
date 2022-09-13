@@ -9,16 +9,26 @@ pvtkey = create_private_key()
 # pvtkey = "0x01d468448180b444ed197f4684f76df2201cd3938e697b26d0b439f797d7e1b4"
 print(pvtkey)
 
-seed = "rum://seed?v=1&e=0&n=0&b=wRJZSa5fQvOhhOBluJupaA&c=tBzr2eUUPkBteARtKEkyZF1C1IydXZwghG23L8ZH1sY&g=wgb-PvHZQHm2tFfS2eO5wA&k=AgZKtJqzwgFcfKpJm-91qoMx7WaDDhmKsWTKEX0Ri_co&s=xmyKvW03SM63qcCPXOoAAndXduFDTK9_VL5_qMhHUs56xsZ1rrAVra22c-T3HPg-e9Gyawc4c3fN0U7cr1IApQA&t=FxIuIx4VxGA&a=test&y=group_timeline&u=http%3A%2F%2F127.0.0.1%3A57772%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyJjMjA2ZmUzZS1mMWQ5LTQwNzktYjZiNC01N2QyZDllM2I5YzAiXSwiZXhwIjoxODIwMTIxOTQxLCJuYW1lIjoiYWxsb3ctYzIwNmZlM2UtZjFkOS00MDc5LWI2YjQtNTdkMmQ5ZTNiOWMwIiwicm9sZSI6Im5vZGUifQ.ude-xq9rhnsRuILSvBz8HDuYndpqXu2B09Tz44NWdGQ"
+seed = "rum://seed?v=1&e=0&n=0&b=zIEz8KEhR5iZif_waw6WUQ&c=K61eHe7hv2jCfvTZwL9g2LbeWqDveXyWZzVAxxUIExw&g=a4vBF20HTTyxyegkgeYAfQ&k=AzpMoqDy4aUoW2-kFQhwHfy6T5p5XCi8VY5OCG5qyHN7&s=fA1e4wUYjNQeTHDwPruu9Bsx5kR6mwwEMwOkljRRc7BM-bVQkjDFjgwWgdeZIBbSfmJMdMBYxvWTBTV4slbn8AE&t=FxMhWf_H0dA&a=test_weibo&y=group_timeline&u=http%3A%2F%2F127.0.0.1%3A57772%3Fjwt%3DeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGxvd0dyb3VwcyI6WyI2YjhiYzExNy02ZDA3LTRkM2MtYjFjOS1lODI0ODFlNjAwN2QiXSwiZXhwIjoxODIwMzg5MzU4LCJuYW1lIjoiYWxsb3ctNmI4YmMxMTctNmQwNy00ZDNjLWIxYzktZTgyNDgxZTYwMDdkIiwicm9sZSI6Im5vZGUifQ.w9BUzPm6ZsmhrH2hc9D8hBUUDyLg7UaTuNXpSmeR-OE"
 bot = MiniNode(seed)
 
 r = bot.api.send_content(pvtkey, content="hi", images=[r"D:\game\box.png"])
 print(r)
 
-r = bot.api.edit_trx(pvtkey, trx_id=r["trx_id"], content="hihihihi", images=[r"D:\game\box.png", r"D:\game\box.png"])
+r = bot.api.edit_trx(
+    pvtkey,
+    trx_id=r["trx_id"],
+    content="hihihihi",
+    images=[r"D:\game\box.png", r"D:\game\box.png"],
+)
 print(r)
 
-r = bot.api.reply_trx(pvtkey, trx_id=r["trx_id"], content="回复你一个", images=[r"D:\game\box.png", r"D:\game\box.png"])
+r = bot.api.reply_trx(
+    pvtkey,
+    trx_id=r["trx_id"],
+    content="回复你一个",
+    images=[r"D:\game\box.png", r"D:\game\box.png"],
+)
 print(r)
 
 r = bot.api.like(pvtkey, trx_id=r["trx_id"])

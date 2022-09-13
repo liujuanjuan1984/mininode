@@ -13,11 +13,21 @@ logger = logging.getLogger(__name__)
 class MiniNode:
     """python for quorum lightnode, without datastore, one MiniNode client for one group"""
 
-    def __init__(self, seedurl: str, is_session: bool = True, is_connection: bool = True):
+    def __init__(self, seedurl: str, is_session: bool = True, keep_alive: bool = True):
+        """init mininode client
+
+        Args:
+            seedurl (str): the seed url of rum group which shared by rum fullnode, with host:post?jwt=xxx to connect
+            is_session (bool, optional): http request use session or not. Defaults to True.
+            keep_alive (bool, optional): http request keep alive or not. Defaults to True.
+
+        Raises:
+            ValueError: invalid seedurl, must start with rum://seed?, shared by rum fullnode.
+        """
         info = utils.decode_seed_url(seedurl)
         url = parse.urlparse(info["url"])
         if not info["url"]:
-            raise ValueError("Invalid seed url.")
+            raise ValueError("Invalid seedurl.")
         jwt = parse.parse_qs(url.query)
         if jwt:
             jwt = jwt["jwt"][0]
@@ -29,7 +39,7 @@ class MiniNode:
         _params = dict(
             api_base=f"{url.scheme}://{url.netloc}/api/v1",
             jwt_token=jwt,
-            is_connection=is_connection,
+            keep_alive=keep_alive,
             is_session=is_session,
         )
         self.http = HttpRequest(**_params)

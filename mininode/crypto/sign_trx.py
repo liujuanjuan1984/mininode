@@ -1,6 +1,8 @@
+"""sign_trx.py"""
 import base64
 import hashlib
 import json
+import logging
 import os
 import time
 import uuid
@@ -10,41 +12,41 @@ import eth_keys
 from Crypto.Cipher import AES
 from google.protobuf import any_pb2, json_format
 
+from mininode.crypto.account import private_key_to_pubkey
 from mininode.proto import pbQuorum
 
+logger = logging.getLogger(__name__)
 nonce = 1
 
 
 def aes_encrypt(key: bytes, data: bytes) -> bytes:
+    """aes encrypt"""
     cipher = AES.new(key, AES.MODE_GCM, nonce=os.urandom(12))
     ciphertext, tag = cipher.encrypt_and_digest(data)
     return b"".join([cipher.nonce, ciphertext, tag])
 
 
 def aes_decrypt(key: bytes, data: bytes) -> bytes:
+    """aes decrypt"""
     nonce, tag = data[:12], data[-16:]
     cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
     return cipher.decrypt_and_verify(data[12:-16], tag)
 
 
-def get_sender_pub_key(private_key: bytes) -> str:
-    pk = eth_keys.keys.PrivateKey(private_key)
-    return base64.urlsafe_b64encode(pk.public_key.to_compressed_bytes()).decode()
-
-
 def check_timestamp(timestamp: Union[str, int, float, None] = None):
+    """check timestamp"""
     if timestamp is None:
         return int(time.time() * 1e9)
     try:
-        ts = str(timestamp).replace(".", "")
-        if len(ts) > 19:
-            ts = ts[:19]
-        elif len(ts) < 19:
-            ts += "0" * (19 - len(ts))
-        ts = int(ts)
-        return ts
-    except Exception as e:
-        print(e)
+        timestamp = str(timestamp).replace(".", "")
+        if len(timestamp) > 19:
+            timestamp = timestamp[:19]
+        elif len(timestamp) < 19:
+            timestamp += "0" * (19 - len(timestamp))
+        timestamp = int(timestamp)
+        return timestamp
+    except Exception as err:
+        logger.info("timestamp error: %s", err)
         return int(time.time() * 1e9)
 
 
@@ -56,6 +58,8 @@ def trx_encrypt(
     person: Dict[str, Any] = None,
     timestamp=None,
 ) -> Dict[str, str]:
+    """trx encrypt"""
+    # pylint: disable=W,E,R
     if obj is None and person is None:
         raise ValueError("obj and person is None")
     if obj is not None and person is not None:
@@ -70,7 +74,7 @@ def trx_encrypt(
     encrypted = aes_encrypt(aes_key, data)
 
     priv = eth_keys.keys.PrivateKey(private_key)
-    sender_pub_key = get_sender_pub_key(private_key)
+    sender_pub_key = private_key_to_pubkey(private_key)
 
     timestamp = check_timestamp(timestamp)
     global nonce
@@ -87,8 +91,8 @@ def trx_encrypt(
 
     trx_without_sign_pb = pbQuorum.Trx(**trx)
     trx_without_sign_pb_bytes = trx_without_sign_pb.SerializeToString()
-    hash = hashlib.sha256(trx_without_sign_pb_bytes).digest()
-    signature = priv.sign_msg_hash(hash).to_bytes()
+    trx_hash = hashlib.sha256(trx_without_sign_pb_bytes).digest()
+    signature = priv.sign_msg_hash(trx_hash).to_bytes()
     trx["SenderSign"] = signature
 
     trx_pb = pbQuorum.Trx(**trx)
@@ -108,6 +112,8 @@ def trx_encrypt(
 
 
 def trx_decrypt(aes_key: bytes, encrypted_trx: dict):
+    """trx decrypt"""
+    # pylint: disable=W,E,R
     data = encrypted_trx.get("Data")
     if data is None:
         raise ValueError("Data is None")
@@ -134,7 +140,7 @@ def trx_decrypt(aes_key: bytes, encrypted_trx: dict):
     return decrpyted_trx
 
 
-def get_content_param(
+def pack_content_param(
     aes_key: bytes,
     group_id: str,
     start_trx: str = None,
@@ -143,6 +149,7 @@ def get_content_param(
     include_start_trx: bool = False,
     senders=None,
 ) -> dict[str, str]:
+    """pack content param"""
     params = {
         "group_id": group_id,
         "reverse": "true" if reverse is True else "false",

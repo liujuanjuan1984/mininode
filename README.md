@@ -30,7 +30,7 @@ pipenv run python example/send_to_group.py
 
 ```sh
 isort .
-black -l 120 -t py39 .
+black -l 100 -t py39 .
 ```
 
 代码检查：

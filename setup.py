@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="mininode",
-    version="0.1.6",
+    version="0.2.0",
     author="liujuanjuan1984, zhangwm404",
     author_email="qiaoanlu@163.com",
     description="a mini python sdk for quorum lightnode with http/https requests to quorum fullnode",
@@ -30,6 +30,7 @@ setuptools.setup(
         "requests",
         "filetype",
         "pillow",
+        "pygifsicle",
         "eth_keys",
         "protobuf",
         "eth_account",

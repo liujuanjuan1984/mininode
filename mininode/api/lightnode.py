@@ -1,24 +1,28 @@
+"""lightnode.py"""
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 from mininode import utils
 from mininode.api.base import BaseAPI
-from mininode.crypto.account import check_private_key
-from mininode.crypto.sign_trx import get_content_param, trx_decrypt, trx_encrypt
+from mininode.crypto.account import check_private_key, private_key_to_pubkey
+from mininode.crypto.sign_trx import pack_content_param, trx_decrypt, trx_encrypt
 
 logger = logging.getLogger(__name__)
 
 
 class QuorumLightNodeAPI(BaseAPI):
+    """the light node api for quorum"""
+
     def send_content(
         self,
         private_key,
         content: Optional[str] = None,
         name: Optional[str] = None,
         images: Optional[List] = None,
-        timestamp=None,
+        timestamp: Union[str, int, float, None] = None,
     ):
+        """send content"""
         if not (content or images):
             raise ValueError("param content or images is required")
         obj = {"type": "Note"}
@@ -31,8 +35,22 @@ class QuorumLightNodeAPI(BaseAPI):
 
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
-    def edit_trx(self, private_key, trx_id, content: str = None, images: List = None, timestamp=None):
-        # TODO: 检查发起 edit 的 pubkey 是否为 group owner 或 trx_id 的用户自己
+    def edit_trx(
+        self,
+        private_key: Union[str, int, bytes],
+        trx_id: str,
+        check_sender: bool = False,
+        content: Optional[str] = None,
+        images: Optional[List] = None,
+        timestamp: Union[str, int, float, None] = None,
+    ):
+        """edit trx content, which is to send a new trx but connected to the old trx."""
+        if check_sender:
+            sender = self.get_trx(trx_id).get("SenderPubkey")
+            user = private_key_to_pubkey(private_key)
+            if user != sender:
+                raise ValueError("You are not the sender of the trx, you can't edit it.")
+
         if not (content or images):
             raise ValueError("param content or images is required")
         obj = {
@@ -45,11 +63,25 @@ class QuorumLightNodeAPI(BaseAPI):
             obj["image"] = utils.pack_images(images)
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
-    def del_trx(self, private_key, trx_id, timestamp=None):
+    def del_trx(
+        self,
+        private_key: Union[str, int, bytes],
+        trx_id: str,
+        timestamp: Union[str, int, float, None] = None,
+    ):
+        """mark trx as delete, which is to send a new trx but connected to the old trx."""
         obj = {"type": "Note", "id": trx_id, "content": "OBJECT_STATUS_DELETED"}
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
-    def reply_trx(self, private_key, trx_id, content: str = None, images: List = None, timestamp=None):
+    def reply_trx(
+        self,
+        private_key: Union[str, int, bytes],
+        trx_id: str,
+        content: Optional[str] = None,
+        images: Optional[List] = None,
+        timestamp: Union[str, int, float, None] = None,
+    ):
+        """reply trx"""
         if not (content or images):
             raise ValueError("param content or images is required")
         obj = {
@@ -62,13 +94,27 @@ class QuorumLightNodeAPI(BaseAPI):
             obj["image"] = utils.pack_images(images)
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
-    def like(self, private_key, trx_id, like_type="Like", timestamp=None):
+    def like(
+        self,
+        private_key: Union[str, int, bytes],
+        trx_id: str,
+        like_type: str = "Like",
+        timestamp: Union[str, int, float, None] = None,
+    ):
+        """like trx"""
         if like_type.lower() not in ("like", "dislike"):
-            raise ValueError(f"param like_type should be Like or Dislike")
+            raise ValueError("param like_type should be Like or Dislike")
         obj = {"id": trx_id, "type": like_type.title()}
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
 
-    def update_profile(self, private_key, name=None, image=None, timestamp=None):
+    def update_profile(
+        self,
+        private_key: Union[str, int, bytes],
+        name: Optional[str] = None,
+        image: Optional[str] = None,
+        timestamp: Union[str, int, float, None] = None,
+    ):
+        """update profile"""
         if name is None and image is None:
             raise ValueError("param name or image is required.")
         person = {}
@@ -78,7 +124,13 @@ class QuorumLightNodeAPI(BaseAPI):
             person["image"] = utils.pack_profile_image(image)
         return self.send_trx(private_key, person=person, timestamp=timestamp)
 
-    def send_trx(self, private_key, obj: Dict = None, person: Dict = None, timestamp=None):
+    def send_trx(
+        self,
+        private_key: Union[str, int, bytes],
+        obj: Optional[Dict] = None,
+        person: Optional[Dict] = None,
+        timestamp: Union[str, int, float, None] = None,
+    ):
         """
         obj/person: dict
         timestamp:2022-10-05 12:34
@@ -89,51 +141,72 @@ class QuorumLightNodeAPI(BaseAPI):
         if timestamp and isinstance(timestamp, str):
             timestamp = timestamp.replace("/", "-")[:16]
             timestamp = time.mktime(time.strptime(timestamp, "%Y-%m-%d %H:%M"))
-        trx = trx_encrypt(self.group_id, self.aes_key, private_key, obj=obj, person=person, timestamp=timestamp)
+        trx = trx_encrypt(
+            self.group_id,
+            self.aes_key,
+            private_key,
+            obj=obj,
+            person=person,
+            timestamp=timestamp,
+        )
         return self._post(endpoint=f"/node/trx/{self.group_id}", payload=trx)
 
-    def get_trx(self, trx_id):
+    def get_trx(self, trx_id: str):
+        """get encrpyted trx"""
         return self._get(endpoint=f"/trx/{self.group_id}/{trx_id}")
 
-    def encrypt_trx(self, encrypted_trx: dict):
-        return trx_decrypt(self.aes_key, encrypted_trx)
-
-    def trx(self, trx_id):
+    def trx(self, trx_id: str):
+        """get decrypted trx"""
         encrypted_trx = self.get_trx(trx_id)
-        return self.encrypt_trx(encrypted_trx)
+        trx = trx_decrypt(self.aes_key, encrypted_trx)
+        return trx
 
     def get_content(
         self,
-        start_trx: str = None,
+        start_trx: Optional[str] = None,
         num: int = 20,
         reverse: bool = False,
         include_start_trx: bool = False,
-        senders=None,
-        trx_types=None,
+        senders: Optional[List] = None,
+        trx_types: Optional[Tuple] = None,
     ):
+        """get content"""
         # TODO:如果把 senders 传入 quorum，会导致拿不到数据，或数据容易中断，所以实现时拿了全部数据，再筛选senders
-        payload = get_content_param(
-            self.aes_key, self.group_id, start_trx, num, reverse, include_start_trx, senders=None
+        payload = pack_content_param(
+            self.aes_key,
+            self.group_id,
+            start_trx,
+            num,
+            reverse,
+            include_start_trx,
+            senders=None,
         )
         encypted_trxs = self._post(f"/node/groupctn/{self.group_id}", payload=payload)
         # check trx_types:
         if trx_types:
             for i in trx_types:
                 if i not in utils.CLIENT_TRX_TYPES:
-                    raise ValueError(f"Invalid trx_type. param trx_type is one of {utils.CLIENT_TRX_TYPES}")
+                    raise ValueError(
+                        "Invalid trx_type. param trx_type is one of %s", str(utils.CLIENT_TRX_TYPES)
+                    )
         try:
-            trxs = [self.encrypt_trx(i) for i in encypted_trxs]
+            trxs = [trx_decrypt(self.aes_key, i) for i in encypted_trxs]
             if senders:
                 trxs = [i for i in trxs if i["Publisher"] in senders]
             if trx_types:
-                trxs = [trx for trx in trxs if (utils.get_trx_type(trx) in trx_types)]
+                trxs = [trx for trx in trxs if utils.get_trx_type(trx) in trx_types]
         except Exception as err:
-            logger.warning(f"get_content error: {err}")
+            logger.warning("get_content error: %s", err)
             trxs = encypted_trxs
         return trxs
 
-    def get_all_contents(self, start_trx=None, senders=None, trx_types=None):
-        """获取所有内容trxs的生成器，可以用 for...in...来迭代。"""
+    def get_all_contents(
+        self,
+        start_trx: Optional[str] = None,
+        senders: Optional[List] = None,
+        trx_types: Optional[Tuple] = None,
+    ):
+        """get all contents as a generator"""
         # 如果把 senders 传入 quorum，会导致拿不到数据，或数据容易中断，所以实现时拿了全部数据，再筛选senders
         hightest_trxid = None
         _hightest_trxs = self.get_content(reverse=True, include_start_trx=True, num=1)
@@ -166,7 +239,7 @@ class QuorumLightNodeAPI(BaseAPI):
         senders: Optional[List] = None,
         users: Optional[Dict] = None,  # 已有的data，传入可用来更新数据
     ):
-        """初始化或更新用户的 profiles 信息"""
+        """get profiles of users"""
         users = users or {}
         progress_tid = users.get("progress_tid", None)
         trxs = self.get_all_contents(

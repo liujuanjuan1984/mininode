@@ -1,6 +1,9 @@
+"""account.py"""
+import base64
 import logging
-from typing import Dict
+from typing import Dict, Union
 
+import eth_keys
 from eth_account import Account
 from eth_utils.hexadecimal import encode_hex
 
@@ -8,16 +11,21 @@ logger = logging.getLogger(__name__)
 
 
 def create_private_key() -> str:
-    acc = Account.create()
+    """create private key"""
+    acc = Account().create()
     private_key = encode_hex(acc.privateKey)
     return private_key
 
 
-def private_key_to_address(private_key) -> str:
-    return Account.from_key(private_key).address
+def private_key_to_address(private_key: Union[str, int, bytes]) -> str:
+    """private key to address"""
+    private_key = check_private_key(private_key)
+    address = Account().from_key(private_key).address
+    return address
 
 
-def check_private_key(private_key: str) -> bytes:
+def check_private_key(private_key: Union[str, int, bytes]) -> bytes:
+    """check private key"""
     if isinstance(private_key, int):
         private_key = hex(private_key)
     if isinstance(private_key, str):
@@ -34,11 +42,23 @@ def check_private_key(private_key: str) -> bytes:
     return private_key
 
 
-def private_key_to_keystore(private_key, password: str):
-    return Account.from_key(private_key).encrypt(password=password)
+def private_key_to_pubkey(private_key: Union[str, int, bytes]) -> str:
+    """private key to public key"""
+    private_key = check_private_key(private_key)
+    account = eth_keys.keys.PrivateKey(private_key)
+    public_key = base64.urlsafe_b64encode(account.public_key.to_compressed_bytes()).decode()
+    return public_key
+
+
+def private_key_to_keystore(private_key: Union[str, int, bytes], password: str):
+    """private key to keystore with password"""
+    private_key = check_private_key(private_key)
+    keystore = Account().from_key(private_key).encrypt(password=password)
+    return keystore
 
 
 def keystore_to_private_key(keystore: Dict, password: str) -> str:
-    pvtkey = Account.decrypt(keystore, password)
+    """keystore with password to private key"""
+    pvtkey = Account().decrypt(keystore, password)
     private_key = encode_hex(pvtkey)
     return private_key

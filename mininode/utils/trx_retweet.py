@@ -1,6 +1,8 @@
+"""trx retweet"""
+
 import datetime
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +11,9 @@ CLIENT_TRX_TYPES = [
     "person",
     "announce",
     "reply",
+    "reply_image_only",
+    "reply_image_text",
+    "reply_text_only",
     "image_only",
     "image_text",
     "text_only",
@@ -18,16 +23,18 @@ CLIENT_TRX_TYPES = [
 ]
 
 
-def timestamp_to_datetime(timestamp, rlt_type="dt"):
-    ts = int(timestamp)
-    n = 10 ** (len(str(ts)) - 10)
-    dt = datetime.datetime.fromtimestamp(int(ts / n))
+def timestamp_to_datetime(timestamp: Union[str, int, float], rlt_type="dt"):
+    """timestamp to datetime"""
+    int_timstamp = int(timestamp)
+    length = 10 ** (len(str(int_timstamp)) - 10)
+    datetime_rlt = datetime.datetime.fromtimestamp(int(int_timstamp / length))
     if rlt_type == "dt":
-        return dt
-    return str(dt)
+        return datetime_rlt
+    return str(datetime_rlt)
 
 
 def _get_content(trx_content: Dict) -> Tuple[str, List]:
+    """get content from trx"""
     _text = trx_content.get("content", "")
     _imgs = []
     if "image" in trx_content:
@@ -42,18 +49,22 @@ def _get_content(trx_content: Dict) -> Tuple[str, List]:
 
 
 def _get_nickname(pubkey: str, nicknames: Dict) -> str:
+    """get nickname from nicknames by pubkey"""
     try:
         name = nicknames[pubkey]["name"] + f"({pubkey[-10:-2]})"
-    except:
+    except Exception as err:
         name = pubkey[-10:-2] or "某人"
+        logger.info("get nickname failed: %s", err)
     return name
 
 
 def _quote_str(text: str) -> str:
+    """quote text"""
     return "> " + text.replace("\n", "\n> ") + "\n"
 
 
 def _init_profile_status(trx_content: Dict) -> str:
+    """init status string from trx_content about profile"""
     _name = "昵称" if "name" in trx_content else ""
     _wallet = "钱包" if "wallet" in trx_content else ""
     _image = "头像" if "image" in trx_content else ""
@@ -61,35 +72,53 @@ def _init_profile_status(trx_content: Dict) -> str:
     return _profile
 
 
-def get_trx_type(trx: Dict) -> str:
+def get_trx_type(trx: Dict, deep_to_reply=False) -> str:
     """get type of trx, trx is one of group content list"""
     typeurl = trx.get("TypeUrl")
     if typeurl == "quorum.pb.Person":
         return "person"
-    elif typeurl != "quorum.pb.Object":
+    if typeurl != "quorum.pb.Object":
         return "encrypted"
+
     content = trx.get("Content", {})
-    trxtype = content.get("type")
+    trxtype = content.get("type", "other")
     if isinstance(trxtype, int):
         return "announce"
-    elif isinstance(trxtype, str):
-        if trxtype == "Note":
-            if "inreplyto" in content:
-                return "reply"
-            if "image" in content:
-                if "content" not in content:
-                    return "image_only"
-                else:
-                    return "image_text"
-            return "text_only"
+    if not isinstance(trxtype, str):
+        return trxtype
+    if trxtype != "Note":
         return trxtype.lower()  # "like","dislike","file"
+
+    if "inreplyto" in content:
+        if not deep_to_reply:
+            return "reply"
+        if "image" in content:
+            if "content" not in content:
+                result = "reply_image_only"
+            else:
+                result = "reply_image_text"
+        else:
+            result = "reply_text_only"
+        return result
+
+    if "image" in content:
+        if "content" not in content:
+            result = "image_only"
+        else:
+            result = "image_text"
     else:
-        return "other"
+        result = "text_only"
+    return result
 
 
 def init_trx_retweet_params(
-    trx: Dict, refer_trx: Optional[Dict] = None, nicknames: Optional[Dict] = None, without_images: bool = False
+    trx: Dict,
+    refer_trx: Optional[Dict] = None,
+    nicknames: Optional[Dict] = None,
+    without_images: bool = False,
+    without_quote_text: bool = False,
 ) -> Dict:
+    """init params for trx retweet"""
     if "Content" not in trx:
         return {}
     nicknames = nicknames or {}
@@ -99,7 +128,7 @@ def init_trx_retweet_params(
     refer_text, refer_imgs = _get_content(refer_trx.get("Content", {}))
     refer_dt = timestamp_to_datetime(refer_trx.get("TimeStamp", 1661957509240230200))
     trx_content = trx["Content"]
-    trxtype = get_trx_type(trx)
+    trxtype = get_trx_type(trx, deep_to_reply=True)
     text, imgs = _get_content(trx_content)
     nickname = _get_nickname(trx["Publisher"], nicknames)
     _dt = timestamp_to_datetime(trx.get("TimeStamp"))
@@ -107,54 +136,39 @@ def init_trx_retweet_params(
     images = []
     lines = []
 
-    if trxtype == "person":
-        _profile = _init_profile_status(trx_content)
-        lines.append(f"修改了个人信息：{_profile}。")
-    elif trxtype == "file":
-        lines.append("上传了文件。")
-    elif trxtype == "announce":
-        lines.append("处理了链上请求。")
-    elif trxtype == "like":
-        lines.append(f"点赞给 `{refer_nickname}` ")
-    elif trxtype == "dislike":
-        lines.append(f"点踩给 `{refer_nickname}` ")
-    elif trxtype == "text_only":
-        lines.insert(0, f"说：")
-        lines.append(text)
-    elif trxtype == "image_text":
-        lines.insert(0, f"发布了图片，并且说：")
-        lines.append(text)
-        if not without_images:
-            images.extend(imgs)
-    elif trxtype == "image_only":
-        lines.insert(0, f"发布了 {len(imgs)} 张图片。")
-        if not without_images:
-            images.extend(imgs)
-    elif trxtype == "reply":
-        if text and imgs:
-            lines.insert(0, f"回复了 {len(imgs)} 张图片，并且说：")
-            lines.append(text)
-        elif text:
-            lines.insert(0, f"回复说：")
-            lines.append(text)
-        elif imgs:
-            lines.insert(0, f"回复了 {len(imgs)} 张图片。")
-            if not without_images:
-                images.extend(imgs)
+    info = {
+        "person": f"修改了个人信息：{_init_profile_status(trx_content)}。",
+        "file": "上传了文件。",
+        "announce": "处理了链上请求。",
+        "like": f"点赞给 `{refer_nickname}` ",
+        "dislike": f"点踩给 `{refer_nickname}` ",
+        "text_only": "说：\n" + text,
+        "image_text": "发布了图片，并且说：\n" + text,
+        "image_only": f"发布了 {len(imgs)} 张图片。",
+        "reply_image_text": f"回复了 {len(imgs)} 张图片，并且说：\n" + text,
+        "reply_text_only": "回复说：" + text,
+        "reply_image_only": f"回复了 {len(imgs)} 张图片。",
+    }
+
+    if trxtype in info:
+        lines.append(info[trxtype])
+
+    if trxtype.find("reply") >= 0:
         lines.append(f"\n回复给 `{refer_nickname}` ")
 
     if refer_text and refer_imgs:
-        lines[-1] += f"{refer_dt} 所发布的文本及 {len(refer_imgs)} 张图片："
-        lines.append(_quote_str(refer_text))
-        if not without_images:
-            images.extend(refer_imgs)
+        lines[-1] += f"{refer_dt} 所发布的文本及 {len(refer_imgs)} 张图片"
     elif refer_text:
-        lines[-1] += f"{refer_dt} 所发布的内容："
-        lines.append(_quote_str(refer_text))
+        lines[-1] += f"{refer_dt} 所发布的内容"
     elif refer_imgs:
-        lines[-1] += f"{refer_dt} 所发布的 {len(refer_imgs)} 张图片。"
-        if not without_images:
-            images.extend(refer_imgs)
+        lines[-1] += f"{refer_dt} 所发布的 {len(refer_imgs)} 张图片"
+
+    if not without_images:
+        images.extend(imgs + refer_imgs)
+    if not without_quote_text:
+        lines.extend(["：", _quote_str(refer_text)])
+    else:
+        lines.append("。")
 
     content = f"{nickname} {_dt} " + "\n".join(lines)
     return {"content": content, "images": images}
