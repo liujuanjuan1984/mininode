@@ -261,7 +261,7 @@ class QuorumLightNodeAPI(BaseAPI):
         users["progress_tid"] = progress_tid
         return users
 
-    def trx_retweet_params(self, trx: Dict, nicknames: Optional[Dict] = None) -> Dict:
+    def trx_retweet_params(self, trx: Dict, nicknames: Optional[Dict] = None, **kwargs) -> Dict:
         """trans from trx to an object of new trx to send to chain.
         Returns:
             obj: object of new trx,can be used as: self.send_note(obj=obj).
@@ -277,5 +277,7 @@ class QuorumLightNodeAPI(BaseAPI):
         refer_trx = None
         if refer_tid:
             refer_trx = self.trx(trx_id=refer_tid)
-        params = utils.init_trx_retweet_params(trx=trx, refer_trx=refer_trx, nicknames=nicknames)
+        params = utils.init_trx_retweet_params(
+            trx=trx, refer_trx=refer_trx, nicknames=nicknames, **kwargs
+        )
         return params

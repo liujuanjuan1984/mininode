@@ -125,6 +125,9 @@ def zip_image(path_bytes_string, max_size: int = IMAGE_MAX_SIZE_KB):
 def _pack_img_content(img: Union[Dict, str, bytes], max_size: int = IMAGE_MAX_SIZE_KB):
     """pack image content"""
     name = None
+    if not img:
+        logger.warning("image is empty")
+        return None
     if isinstance(img, bytes):
         content = img
     elif isinstance(img, str):
@@ -138,6 +141,9 @@ def _pack_img_content(img: Union[Dict, str, bytes], max_size: int = IMAGE_MAX_SI
             raise ValueError("img dict must have content key")
         content = base64.b64decode(img["content"])
         name = img.get("name")
+    else:
+        logger.warning("not support for type: %s", type(img))
+        return None
 
     file_type = filetype.guess(content).extension
 

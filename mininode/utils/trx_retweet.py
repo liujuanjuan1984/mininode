@@ -54,7 +54,6 @@ def _get_nickname(pubkey: str, nicknames: Dict) -> str:
         name = nicknames[pubkey]["name"] + f"({pubkey[-10:-2]})"
     except Exception as err:
         name = pubkey[-10:-2] or "某人"
-        logger.info("get nickname failed: %s", err)
     return name
 
 
@@ -117,6 +116,7 @@ def init_trx_retweet_params(
     nicknames: Optional[Dict] = None,
     without_images: bool = False,
     without_quote_text: bool = False,
+    without_timestamp: bool = False,
 ) -> Dict:
     """init params for trx retweet"""
     if "Content" not in trx:
@@ -126,12 +126,14 @@ def init_trx_retweet_params(
     refer_pubkey = refer_trx.get("Publisher", "")
     refer_nickname = _get_nickname(refer_pubkey, nicknames)
     refer_text, refer_imgs = _get_content(refer_trx.get("Content", {}))
-    refer_dt = timestamp_to_datetime(refer_trx.get("TimeStamp", 1661957509240230200))
+    refer_dt = str(timestamp_to_datetime(refer_trx.get("TimeStamp", 1661957509240230200))) + " "
     trx_content = trx["Content"]
     trxtype = get_trx_type(trx, deep_to_reply=True)
     text, imgs = _get_content(trx_content)
     nickname = _get_nickname(trx["Publisher"], nicknames)
-    _dt = timestamp_to_datetime(trx.get("TimeStamp"))
+    _dt = str(timestamp_to_datetime(trx.get("TimeStamp"))) + " "
+    if without_timestamp:
+        refer_dt = _dt = ""
 
     images = []
     lines = []
@@ -157,18 +159,16 @@ def init_trx_retweet_params(
         lines.append(f"\n回复给 `{refer_nickname}` ")
 
     if refer_text and refer_imgs:
-        lines[-1] += f"{refer_dt} 所发布的文本及 {len(refer_imgs)} 张图片"
+        lines[-1] += f"{refer_dt}所发布的文本及 {len(refer_imgs)} 张图片："
     elif refer_text:
-        lines[-1] += f"{refer_dt} 所发布的内容"
+        lines[-1] += f"{refer_dt}所发布的内容："
     elif refer_imgs:
-        lines[-1] += f"{refer_dt} 所发布的 {len(refer_imgs)} 张图片"
+        lines[-1] += f"{refer_dt}所发布的 {len(refer_imgs)} 张图片。"
 
     if not without_images:
         images.extend(imgs + refer_imgs)
-    if not without_quote_text:
-        lines.extend(["：", _quote_str(refer_text)])
-    else:
-        lines.append("。")
+    if not without_quote_text and refer_text:
+        lines.append(_quote_str(refer_text))
 
-    content = f"{nickname} {_dt} " + "\n".join(lines)
+    content = f"{nickname} {_dt}" + "\n".join(lines)
     return {"content": content, "images": images}
