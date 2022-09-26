@@ -200,6 +200,31 @@ class QuorumLightNodeAPI(BaseAPI):
             trxs = encypted_trxs
         return trxs
 
+    def __get_all_contents(
+        self,
+        start_trx: Optional[str] = None,
+    ):
+        """get all contents as a generator"""
+        hightest_trxid = None
+        _hightest_trxs = self.get_content(reverse=True, include_start_trx=True, num=1)
+        if _hightest_trxs:
+            hightest_trxid = _hightest_trxs[0].get("TrxId")
+        trxs = self.get_content(start_trx=start_trx, num=20)
+        checked_trxids = []
+        num = 20
+        max_try = 30
+        while start_trx != hightest_trxid and max_try > 0:  # 应该用区块高度来判断，而不是是否取得数据。
+            if start_trx in checked_trxids:
+                num += 20
+                max_try -= 1
+            else:
+                checked_trxids.append(start_trx)
+                max_try = 30
+            for trx in trxs:
+                start_trx = trx["TrxId"]
+                yield trx
+            trxs = self.get_content(start_trx=start_trx, num=num)
+
     def get_all_contents(
         self,
         start_trx: Optional[str] = None,
@@ -208,30 +233,13 @@ class QuorumLightNodeAPI(BaseAPI):
     ):
         """get all contents as a generator"""
         # 如果把 senders 传入 quorum，会导致拿不到数据，或数据容易中断，所以实现时拿了全部数据，再筛选senders
-        hightest_trxid = None
-        _hightest_trxs = self.get_content(reverse=True, include_start_trx=True, num=1)
-        if _hightest_trxs:
-            hightest_trxid = _hightest_trxs[0].get("TrxId")
-        trxs = self.get_content(start_trx=start_trx, num=20, senders=None, trx_types=trx_types)
-        checked_trxids = []
         trx_types = trx_types or []
         senders = senders or []
-        num = 20
-        max_try = 100
-        while start_trx != hightest_trxid and max_try > 0:  # 应该用区块高度来判断，而不是是否取得数据。
-            if start_trx in checked_trxids:
-                num += 20
-                max_try -= 1
-            else:
-                checked_trxids.append(start_trx)
-                max_try = 100
-            for trx in trxs:
-                start_trx = trx["TrxId"]
-                flag1 = (utils.get_trx_type(trx) in trx_types) or (not trx_types)
-                flag2 = (trx.get("Publisher", "") in senders) or (not senders)
-                if flag1 and flag2:
-                    yield trx
-            trxs = self.get_content(start_trx=start_trx, num=num, senders=None, trx_types=trx_types)
+        for trx in self.__get_all_contents(start_trx):
+            flag1 = (utils.get_trx_type(trx) in trx_types) or (not trx_types)
+            flag2 = (trx.get("Publisher", "") in senders) or (not senders)
+            if flag1 and flag2:
+                yield trx
 
     def get_profiles(
         self,
@@ -244,18 +252,15 @@ class QuorumLightNodeAPI(BaseAPI):
         progress_tid = users.get("progress_tid", None)
         trxs = self.get_all_contents(
             start_trx=progress_tid,
-            trx_types=None,
-            senders=None,
+            trx_types=("person",),
+            senders=senders,
         )
 
         for trx in trxs:
             progress_tid = trx["TrxId"]
             trx_content = trx.get("Content", {})
             pubkey = trx["Publisher"]
-            if senders and pubkey not in senders:
-                continue
-            if utils.get_trx_type(trx) != "person":
-                continue
+
             if pubkey not in users:
                 users[pubkey] = {}
             for key in types:
