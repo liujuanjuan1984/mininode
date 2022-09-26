@@ -217,14 +217,14 @@ class QuorumLightNodeAPI(BaseAPI):
         trx_types = trx_types or []
         senders = senders or []
         num = 20
-        max_try = 20
+        max_try = 100
         while start_trx != hightest_trxid and max_try > 0:  # 应该用区块高度来判断，而不是是否取得数据。
             if start_trx in checked_trxids:
                 num += 20
                 max_try -= 1
             else:
                 checked_trxids.append(start_trx)
-                max_try = 20
+                max_try = 100
             for trx in trxs:
                 start_trx = trx["TrxId"]
                 flag1 = (utils.get_trx_type(trx) in trx_types) or (not trx_types)
@@ -244,14 +244,18 @@ class QuorumLightNodeAPI(BaseAPI):
         progress_tid = users.get("progress_tid", None)
         trxs = self.get_all_contents(
             start_trx=progress_tid,
-            trx_types=["person"],
-            senders=senders,
+            trx_types=None,
+            senders=None,
         )
 
         for trx in trxs:
             progress_tid = trx["TrxId"]
             trx_content = trx.get("Content", {})
             pubkey = trx["Publisher"]
+            if senders and pubkey not in senders:
+                continue
+            if utils.get_trx_type(trx) != "person":
+                continue
             if pubkey not in users:
                 users[pubkey] = {}
             for key in types:
