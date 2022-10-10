@@ -111,7 +111,7 @@ def trx_encrypt(
     return send_trx_obj
 
 
-def trx_decrypt(aes_key: bytes, encrypted_trx: dict):
+def trx_decrypt(aes_key: bytes, encrypted_trx: Dict):
     """trx decrypt"""
     # pylint: disable=W,E,R
     data = encrypted_trx.get("Data")
@@ -148,7 +148,7 @@ def pack_content_param(
     reverse: bool = False,
     include_start_trx: bool = False,
     senders=None,
-) -> dict[str, str]:
+) -> Dict[str, str]:
     """pack content param"""
     params = {
         "group_id": group_id,
