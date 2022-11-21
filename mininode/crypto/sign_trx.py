@@ -171,3 +171,32 @@ def pack_content_param(
     }
 
     return send_param
+
+
+def pack_appconfig_list_param(
+    aes_key: bytes,
+    group_id: str,
+):
+    obj = {"GroupId": group_id}
+    obj_bytes = json.dumps(obj).encode()
+    obj_encrypted = aes_encrypt(aes_key, obj_bytes)
+    param = {
+        "Req": base64.b64encode(obj_encrypted).decode(),
+        "ReqType": "appconfig_listlist",
+    }
+    return param
+
+
+def pack_appconfig_key_param(
+    aes_key: bytes,
+    group_id: str,
+    key: str,
+):
+    obj = {"GroupId": group_id, "Key": key}
+    obj_bytes = json.dumps(obj).encode()
+    obj_encrypted = aes_encrypt(aes_key, obj_bytes)
+    param = {
+        "Req": base64.b64encode(obj_encrypted).decode(),
+        "ReqType": "appconfig_item_bykey",
+    }
+    return param

@@ -6,7 +6,13 @@ from typing import Dict, List, Optional, Tuple, Union
 from mininode import utils
 from mininode.api.base import BaseAPI
 from mininode.crypto.account import check_private_key, private_key_to_pubkey
-from mininode.crypto.sign_trx import pack_content_param, trx_decrypt, trx_encrypt
+from mininode.crypto.sign_trx import (
+    pack_appconfig_key_param,
+    pack_appconfig_list_param,
+    pack_content_param,
+    trx_decrypt,
+    trx_encrypt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -290,3 +296,11 @@ class QuorumLightNodeAPI(BaseAPI):
             trx=trx, refer_trx=refer_trx, nicknames=nicknames, **kwargs
         )
         return params
+
+    def get_appconfig_keylist(self):
+        payload = pack_appconfig_list_param(self.aes_key, self.group_id)
+        return self._post(endpoint=f"/node/getchaindata/{self.group_id}", payload=payload)
+
+    def get_appconfig_key(self, key: str):
+        payload = pack_appconfig_key_param(self.aes_key, self.group_id, key)
+        return self._post(endpoint=f"/node/getchaindata/{self.group_id}", payload=payload)

@@ -17,13 +17,6 @@ def create_private_key() -> str:
     return private_key
 
 
-def private_key_to_address(private_key: Union[str, int, bytes]) -> str:
-    """private key to address"""
-    private_key = check_private_key(private_key)
-    address = Account().from_key(private_key).address
-    return address
-
-
 def check_private_key(private_key: Union[str, int, bytes]) -> bytes:
     """check private key"""
     if isinstance(private_key, int):
@@ -40,6 +33,13 @@ def check_private_key(private_key: Union[str, int, bytes]) -> bytes:
     if len(private_key) != 32:
         raise ValueError("Invalid private key. param private_key is required.")
     return private_key
+
+
+def private_key_to_address(private_key: Union[str, int, bytes]) -> str:
+    """private key to address"""
+    private_key = check_private_key(private_key)
+    address = Account().from_key(private_key).address
+    return address
 
 
 def private_key_to_pubkey(private_key: Union[str, int, bytes]) -> str:
