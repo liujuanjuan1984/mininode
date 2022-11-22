@@ -138,36 +138,3 @@ def trx_decrypt(aes_key: bytes, encrypted_trx: Dict):
         "TimeStamp": encrypted_trx.get("TimeStamp"),
     }
     return decrpyted_trx
-
-
-def pack_content_param(
-    aes_key: bytes,
-    group_id: str,
-    start_trx: str = None,
-    num: int = 20,
-    reverse: bool = False,
-    include_start_trx: bool = False,
-    senders=None,
-) -> Dict[str, str]:
-    """pack content param"""
-    params = {
-        "group_id": group_id,
-        "reverse": "true" if reverse is True else "false",
-        "num": num,
-        "include_start_trx": "true" if include_start_trx is True else "false",
-        "senders": senders or [],
-    }
-    if start_trx:
-        params["start_trx"] = start_trx
-
-    get_group_ctn_item = {
-        "Req": params,
-    }
-
-    get_group_ctn_item_str = json.dumps(get_group_ctn_item)
-    encrypted = aes_encrypt(aes_key, get_group_ctn_item_str.encode())
-    send_param = {
-        "Req": base64.b64encode(encrypted).decode(),
-    }
-
-    return send_param

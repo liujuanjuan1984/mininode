@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from mininode import utils
 from mininode.api.base import BaseAPI
 from mininode.crypto.account import check_private_key, private_key_to_pubkey
-from mininode.crypto.sign_trx import aes_encrypt, pack_content_param, trx_decrypt, trx_encrypt
+from mininode.crypto.sign_trx import aes_encrypt, trx_decrypt, trx_encrypt
 
 logger = logging.getLogger(__name__)
 
@@ -174,16 +174,22 @@ class QuorumLightNodeAPI(BaseAPI):
     ):
         """get content"""
         # TODO:如果把 senders 传入 quorum，会导致拿不到数据，或数据容易中断，所以实现时拿了全部数据，再筛选senders
-        payload = pack_content_param(
-            self.aes_key,
-            self.group_id,
-            start_trx,
-            num,
-            reverse,
-            include_start_trx,
-            senders=None,
-        )
+
+        params = {
+            "group_id": self.group_id,
+            "reverse": "true" if reverse is True else "false",
+            "num": num,
+            "include_start_trx": "true" if include_start_trx is True else "false",
+            "senders": [],
+        }
+        if start_trx:
+            params["start_trx"] = start_trx
+
+        payload = {
+            "Req": self._pack_obj({"Req": params}),
+        }
         encypted_trxs = self._post(f"/node/groupctn/{self.group_id}", payload=payload)
+
         # check trx_types:
         if trx_types:
             for i in trx_types:
@@ -191,6 +197,7 @@ class QuorumLightNodeAPI(BaseAPI):
                     raise ValueError(
                         "Invalid trx_type. param trx_type is one of %s", str(utils.CLIENT_TRX_TYPES)
                     )
+        # chooce trxs:
         try:
             trxs = [trx_decrypt(self.aes_key, i) for i in encypted_trxs]
             if senders:
