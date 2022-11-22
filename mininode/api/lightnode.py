@@ -1,4 +1,6 @@
 """lightnode.py"""
+import base64
+import json
 import logging
 import time
 from typing import Dict, List, Optional, Tuple, Union
@@ -6,13 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from mininode import utils
 from mininode.api.base import BaseAPI
 from mininode.crypto.account import check_private_key, private_key_to_pubkey
-from mininode.crypto.sign_trx import (
-    pack_appconfig_key_param,
-    pack_appconfig_list_param,
-    pack_content_param,
-    trx_decrypt,
-    trx_encrypt,
-)
+from mininode.crypto.sign_trx import aes_encrypt, pack_content_param, trx_decrypt, trx_encrypt
 
 logger = logging.getLogger(__name__)
 
@@ -297,10 +293,62 @@ class QuorumLightNodeAPI(BaseAPI):
         )
         return params
 
-    def get_appconfig_keylist(self):
-        payload = pack_appconfig_list_param(self.aes_key, self.group_id)
+    def _pack_obj(self, obj: Dict[str, str]) -> str:
+        """pack obj with group chiperkey and return a string"""
+        obj_bytes = json.dumps(obj).encode()
+        obj_encrypted = aes_encrypt(self.aes_key, obj_bytes)
+        req = base64.b64encode(obj_encrypted).decode()
+        return req
+
+    def _get_chaindata(self, obj: Dict, req_type: str):
+        """base api of get chaindata"""
+        payload = {
+            "Req": self._pack_obj(obj),
+            "ReqType": req_type,
+        }
         return self._post(endpoint=f"/node/getchaindata/{self.group_id}", payload=payload)
 
+    def get_group_info(self):
+        """get group info"""
+        obj = {"GroupId": self.group_id}
+        return self._get_chaindata(obj, "group_info")
+
+    def get_auth_type(self, trx_type: str):
+        """get auth type of trx_type"""
+        obj = {"GroupId": self.group_id, "TrxType": trx_type}
+        return self._get_chaindata(obj, "auth_type")
+
+    def get_auth_allowlist(self):
+        """get allowlist"""
+        obj = {"GroupId": self.group_id}
+        return self._get_chaindata(obj, "auth_allowlist")
+
+    def get_auth_denylist(self):
+        """get denylist"""
+        obj = {"GroupId": self.group_id}
+        return self._get_chaindata(obj, "auth_denylist")
+
+    def get_appconfig_keylist(self):
+        """get appconfig keylist"""
+        obj = {"GroupId": self.group_id}
+        return self._get_chaindata(obj, "appconfig_listlist")
+
     def get_appconfig_key(self, key: str):
-        payload = pack_appconfig_key_param(self.aes_key, self.group_id, key)
-        return self._post(endpoint=f"/node/getchaindata/{self.group_id}", payload=payload)
+        """get appconfig key value by keyname"""
+        obj = {"GroupId": self.group_id, "Key": key}
+        return self._get_chaindata(obj, "appconfig_item_bykey")
+
+    def get_group_producer(self):
+        """get group producers"""
+        obj = {"GroupId": self.group_id}
+        return self._get_chaindata(obj, "group_producer")
+
+    def get_announced_producer(self):
+        """get announced producer"""
+        obj = {"GroupId": self.group_id}
+        return self._get_chaindata(obj, "announced_producer")
+
+    def get_announced_user(self, pubkey: str):
+        """get announced user info by pubkey"""
+        obj = {"GroupId": self.group_id, "SignPubkey": pubkey}
+        return self._get_chaindata(obj, "announced_user")
