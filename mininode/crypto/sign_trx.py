@@ -57,9 +57,14 @@ def trx_encrypt(
     obj: Dict[str, Any] = None,
     person: Dict[str, Any] = None,
     timestamp=None,
+    version: int = 1,
 ) -> Dict[str, str]:
     """trx encrypt"""
     # pylint: disable=W,E,R
+
+    if str(version) not in ["1", "2"]:
+        raise Exception("trx version error, only support 1 or 2")
+
     if obj is None and person is None:
         raise ValueError("obj and person is None")
     if obj is not None and person is not None:
@@ -83,7 +88,7 @@ def trx_encrypt(
         "GroupId": group_id,
         "Data": encrypted,
         "TimeStamp": timestamp,
-        "Version": "1.0.0",
+        "Version": f"{version}.0.0",
         "Expired": timestamp + int(30 * 1e9),
         "Nonce": nonce + 1,
         "SenderPubkey": sender_pub_key,

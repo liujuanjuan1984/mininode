@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 class MiniNode:
     """python for quorum lightnode, without datastore, one MiniNode client for one group"""
 
-    def __init__(self, seedurl: str, is_session: bool = True, keep_alive: bool = True):
+    def __init__(
+        self, seedurl: str, is_session: bool = True, keep_alive: bool = True, version: int = 1
+    ):
         """init mininode client
 
         Args:
@@ -43,4 +45,4 @@ class MiniNode:
             is_session=is_session,
         )
         self.http = HttpRequest(**_params)
-        self.api = QuorumLightNodeAPI(self.http, group_id, aes_key)
+        self.api = QuorumLightNodeAPI(self.http, group_id, aes_key, version=version)

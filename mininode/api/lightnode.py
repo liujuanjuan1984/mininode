@@ -150,6 +150,7 @@ class QuorumLightNodeAPI(BaseAPI):
             obj=obj,
             person=person,
             timestamp=timestamp,
+            version=self.version,
         )
         return self._post(endpoint=f"/node/trx/{self.group_id}", payload=trx)
 

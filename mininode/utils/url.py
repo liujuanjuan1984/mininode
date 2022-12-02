@@ -97,6 +97,9 @@ def decode_seed_url(seedurl: str) -> Dict:
         "chiperkey": _decode_cipher_key(query_dict.get("c")),
         "url": query_dict.get("u"),
         "timestamp": _decode_timestamp(query_dict.get("t")),
-        "genesis_block_id": _decode_uuid(query_dict.get("b")),
     }
+    try:
+        info["genesis_block_id"] = _decode_uuid(query_dict.get("b"))
+    except Exception as err:
+        logger.info(err)
     return info
