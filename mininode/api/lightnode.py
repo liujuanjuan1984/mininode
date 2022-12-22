@@ -43,6 +43,7 @@ class QuorumLightNodeAPI(BaseAPI):
         trx_id: str,
         check_sender: bool = False,
         content: Optional[str] = None,
+        name: Optional[str] = None,
         images: Optional[List] = None,
         timestamp: Union[str, int, float, None] = None,
     ):
@@ -53,14 +54,16 @@ class QuorumLightNodeAPI(BaseAPI):
             if user != sender:
                 raise ValueError("You are not the sender of the trx, you can't edit it.")
 
-        if not (content or images):
-            raise ValueError("param content or images is required")
+        if not (content or images or name):
+            raise ValueError("param content or images or name is required")
         obj = {
             "type": "Note",
             "id": trx_id,
         }
         if content:
             obj["content"] = content
+        if name:
+            obj["name"] = name
         if images:
             obj["image"] = utils.pack_images(images)
         return self.send_trx(private_key, obj=obj, timestamp=timestamp)
@@ -196,7 +199,8 @@ class QuorumLightNodeAPI(BaseAPI):
             for i in trx_types:
                 if i not in utils.CLIENT_TRX_TYPES:
                     raise ValueError(
-                        "Invalid trx_type. param trx_type is one of %s", str(utils.CLIENT_TRX_TYPES)
+                        "Invalid trx_type. param trx_type is one of %s",
+                        str(utils.CLIENT_TRX_TYPES),
                     )
         # chooce trxs:
         try:

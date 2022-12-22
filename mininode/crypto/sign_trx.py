@@ -78,7 +78,7 @@ def trx_encrypt(
     data = any_obj_pb.SerializeToString()
     encrypted = aes_encrypt(aes_key, data)
 
-    priv = eth_keys.keys.PrivateKey(private_key)
+    pvtkey = eth_keys.keys.PrivateKey(private_key)
     sender_pub_key = private_key_to_pubkey(private_key)
 
     timestamp = check_timestamp(timestamp)
@@ -97,7 +97,7 @@ def trx_encrypt(
     trx_without_sign_pb = pbQuorum.Trx(**trx)
     trx_without_sign_pb_bytes = trx_without_sign_pb.SerializeToString()
     trx_hash = hashlib.sha256(trx_without_sign_pb_bytes).digest()
-    signature = priv.sign_msg_hash(trx_hash).to_bytes()
+    signature = pvtkey.sign_msg_hash(trx_hash).to_bytes()
     trx["SenderSign"] = signature
 
     trx_pb = pbQuorum.Trx(**trx)

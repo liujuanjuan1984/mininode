@@ -14,7 +14,11 @@ class MiniNode:
     """python for quorum lightnode, without datastore, one MiniNode client for one group"""
 
     def __init__(
-        self, seedurl: str, is_session: bool = True, keep_alive: bool = True, version: int = 1
+        self,
+        seedurl: str,
+        is_session: bool = True,
+        keep_alive: bool = True,
+        version: int = 1,
     ):
         """init mininode client
 
