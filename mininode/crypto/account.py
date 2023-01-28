@@ -42,6 +42,14 @@ def private_key_to_address(private_key: Union[str, int, bytes]) -> str:
     return address
 
 
+def public_key_to_address(public_key: str) -> str:
+    """public key to address"""
+    public_key = base64.urlsafe_b64decode(public_key)
+    pubkey = eth_keys.keys.PublicKey.from_compressed_bytes(public_key)
+    address = pubkey.to_checksum_address()
+    return address
+
+
 def private_key_to_pubkey(private_key: Union[str, int, bytes]) -> str:
     """private key to public key"""
     private_key = check_private_key(private_key)

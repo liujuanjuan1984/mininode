@@ -7,4 +7,6 @@ __all__ = [
     "private_key_to_keystore",
     "keystore_to_private_key",
     "private_key_to_pubkey",
+    "private_key_to_address",
+    "public_key_to_address",
 ]

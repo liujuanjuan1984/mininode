@@ -1,10 +1,5 @@
 """utils"""
-from mininode.utils.image import (
-    get_filebytes,
-    pack_images,
-    pack_profile_image,
-    zip_image,
-)
+from mininode.utils.image import get_filebytes, pack_images, pack_profile_image, zip_image
 from mininode.utils.trx_retweet import (
     CLIENT_TRX_TYPES,
     get_trx_type,
